@@ -1,4 +1,4 @@
-; iolib
+; naskfunc
 ; TAB=4
 
 [FORMAT "WCOFF"]
@@ -17,8 +17,61 @@ _io_hlt:
     HLT
     RET
 
-_write_mem8:
-    MOV     ECX, [ESP+4]
+_io_cli:
+    CLI
+    RET
+    
+_io_sti:
+    STI
+    RET
+    
+_io_stihlt:
+    STI
+    HLT
+    RET
+    
+_io_in8:
+    MOV     EDX, [ESP+4]
+    MOV     EAX, 0
+    IN      AL, DX
+    RET
+    
+_io_in16:
+    MOV     EDX, [ESP+4]
+    MOV     EAX, 0
+    IN      AX, DX
+    RET
+    
+_io_in32:
+    MOV     EDX, [ESP+4]
+    IN      EAX, DX
+    RET
+    
+_io_out8
+    MOV     EDX, [ESP+4]
     MOV     AL, [ESP+8]
-    MOV     [ECX], AL
+    OUT     DX, AL
+    RET
+    
+_io_out16
+    MOV     EDX, [ESP+4]
+    MOV     AX, [ESP+8]
+    OUT     DX, AX
+    RET
+    
+_io_out32
+    MOV     EDX, [ESP+4]
+    MOV     EAX, [ESP+8]
+    OUT     DX, EAX
+    RET
+    
+_io_load_eflags:
+    PUSHFD
+    POP     EAX
+    RET
+    
+_io_store_eflags:
+    MOV     EAX, [ESP+4]
+    PUSH    EAX
+    POPFD
     RET
