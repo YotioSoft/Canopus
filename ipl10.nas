@@ -1,6 +1,8 @@
 ; hello-os
 ; TAB=4
 
+CYLS    EQU     10
+
 	ORG		0x7C00
 
 ; 以下は標準的なFAT12フォーマットフロッピーディスクのために記述
@@ -73,12 +75,9 @@ next:
     CMP     CH, CYLS
     JB      readloop
     
+    MOV     [0x0FF0], CH
     JMP     0xC200
 
-fin:
-	HLT
-	JMP		fin
-    
 error:
     MOV     AX, 0
     MOV     ES, AX
@@ -93,6 +92,10 @@ putloop:
 	MOV		BX, 15
 	INT		0x10
 	JMP		putloop
+    
+fin:
+	HLT
+	JMP		fin
 
 msg:
 	DB		0x0A, 0x0A

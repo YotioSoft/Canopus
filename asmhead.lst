@@ -64,8 +64,7 @@
     64 0000C262 8E D0                               MOV     SS, AX
     65 0000C264                                     
     66 0000C264                                 ; bootpackの転送
-    67 0000C264 66 BE 00000000                      MOV     ESI, bootpack
-      >> [ERROR #012] expression error.
+    67 0000C264 66 BE 0000C330                      MOV     ESI, bootpack
     68 0000C26A 66 BF 00280000                      MOV     EDI, BOTPAK
     69 0000C270 66 B9 00020000                      MOV     ECX, 512*1024/4
     70 0000C276 E8 0077                             CALL    memcpy
@@ -132,4 +131,4 @@
    131 0000C330                                     
    132 0000C330                                     ALIGNB  16
    133 0000C330                                     
-   134 0000C330                                 bootpak:
+   134 0000C330                                 bootpack:
