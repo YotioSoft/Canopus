@@ -1,39 +1,50 @@
+TOOLPATH = ../z_tools/
+MAKE     = $(TOOLPATH)make.exe -r
+NASK     = $(TOOLPATH)nask.exe
+EDIMG    = $(TOOLPATH)edimg.exe
+IMGTOL   = $(TOOLPATH)imgtol.com
+COPY     = copy
+DEL      = del
 
 # デフォルト動作
 
 default :
-	../z_tools/make.exe img
+	$(MAKE) img
 
 # ファイル生成規則
 
 ipl.bin : ipl.nas Makefile
-	../z_tools/nask.exe ipl.nas ipl.bin ipl.lst
+	$(NASK) ipl.nas ipl.bin ipl.lst
 
-canopus.img : ipl.bin Makefile
-	../z_tools/edimg.exe   imgin:../z_tools/fdimg0at.tek \
-		wbinimg src:ipl.bin len:512 from:0 to:0   imgout:canopus.img
+canopus.sys : canopus.nas Makefile
+	$(NASK) canopus.nas canopus.sys canopus.lst
+
+canopus.img : ipl.bin canopus.sys Makefile
+	$(EDIMG)   imgin:../z_tools/fdimg0at.tek \
+		wbinimg src:ipl.bin len:512 from:0 to:0 \
+		copy from:canopus.sys to:@: \
+		imgout:canopus.img
 
 # コマンド
 
-asm :
-	../z_tools/make.exe -r ipl.bin
-
 img :
-	../z_tools/make.exe -r canopus.img
+	$(MAKE) canopus.img
 
 run :
-	../z_tools/make.exe img
-	copy canopus.img ..\z_tools\qemu\fdimage0.bin
-	../z_tools/make.exe -C ../z_tools/qemu
+	$(MAKE) img
+	$(COPY) canopus.img ..\z_tools\qemu\fdimage0.bin
+	$(MAKE) -C ../z_tools/qemu
 
 install :
-	../z_tools/make.exe img
-	../z_tools/imgtol.com w a: canopus.img
+	$(MAKE) img
+	$(IMGTOL) w a: canopus.img
 
 clean :
-	-del ipl.bin
-	-del ipl.lst
+	-$(DEL) ipl.bin
+	-$(DEL) ipl.lst
+	-$(DEL) canopus.sys
+	-$(DEL) canopus.lst
 
 src_only :
-	../z_tools/make.exe clean
-	-del canopus.img
+	$(MAKE) clean
+	-$(DEL) canopus.img

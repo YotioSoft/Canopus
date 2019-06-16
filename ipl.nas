@@ -39,6 +39,7 @@ entry:
     MOV     DH, 0
     MOV     CL, 2
     
+readloop:
     MOV     SI, 0
     
 retry:
@@ -63,6 +64,16 @@ next:
     ADD     CL, 1
     CMP     CL, 18
     JBE     readloop
+    MOV     CL, 1
+    ADD     DH, 1
+    CMP     DH, 2
+    JB      readloop
+    MOV     DH, 0
+    ADD     CH, 1
+    CMP     CH, CYLS
+    JB      readloop
+    
+    JMP     0xC200
 
 fin:
 	HLT
