@@ -1,4 +1,17 @@
 	.file	"bootpack.c"
+	.data
+LC0:
+	.byte	67
+	.byte	97
+	.byte	110
+	.byte	111
+	.byte	112
+	.byte	117
+	.byte	115
+	.byte	32
+	.byte	79
+	.byte	83
+	.space 1
 	.text
 	.balign 2
 .globl _HariMain
@@ -6,36 +19,183 @@
 _HariMain:
 	pushl	%ebp
 	movl	%esp, %ebp
+	pushl	%edi
+	pushl	%esi
+	movl	$LC0, %esi
+	subl	$16, %esp
+	leal	-24(%ebp), %edi
 	call	_init_palette
-	pushl	$120
-	pushl	$120
-	pushl	$20
-	pushl	$20
-	pushl	$1
-	pushl	$320
-	pushl	$655360
-	call	_boxfill8
-	pushl	$150
-	pushl	$170
+	movswl	4086,%eax
+	pushl	%eax
+	movswl	4084,%eax
+	pushl	%eax
+	pushl	4088
+	call	_init_screen
+	addl	$12, %esp
+	cld
+	movl	$11, %ecx
+	rep
+	movsb
+	xorl	%esi, %esi
+	movl	$60, %edi
+L6:
+	movsbl	-24(%ebp,%esi),%eax
+	sall	$4, %eax
+	incl	%esi
+	addl	$_hankaku, %eax
+	pushl	%eax
+	pushl	$0
 	pushl	$50
-	pushl	$70
-	pushl	$2
-	pushl	$320
-	pushl	$655360
+	pushl	%edi
+	addl	$8, %edi
+	movswl	4084,%eax
+	pushl	%eax
+	pushl	4088
+	call	_putfont8
+	addl	$24, %esp
+	cmpl	$9, %esi
+	jle	L6
+L10:
+	call	_io_hlt
+	jmp	L10
+	.balign 2
+.globl _init_screen
+	.def	_init_screen;	.scl	2;	.type	32;	.endef
+_init_screen:
+	pushl	%ebp
+	movl	%esp, %ebp
+	pushl	%edi
+	pushl	%esi
+	pushl	%ebx
+	movl	16(%ebp), %esi
+	pushl	%esi
+	movl	12(%ebp), %ebx
+	pushl	%ebx
+	movl	8(%ebp), %edi
+	pushl	$0
+	pushl	$0
+	pushl	$8
+	pushl	%ebx
+	pushl	%edi
+	call	_boxfill8
+	leal	-10(%esi), %eax
+	pushl	%esi
+	subl	$40, %esi
+	pushl	%ebx
+	pushl	%eax
+	pushl	$0
+	pushl	$15
+	pushl	%ebx
+	pushl	%edi
 	call	_boxfill8
 	addl	$56, %esp
-	pushl	$180
-	pushl	$220
-	pushl	$80
-	pushl	$120
-	pushl	$4
-	pushl	$320
-	pushl	$655360
+	pushl	%esi
+	leal	-50(%ebx), %esi
+	pushl	%esi
+	pushl	$30
+	pushl	$50
+	pushl	$7
+	pushl	%ebx
+	pushl	%edi
 	call	_boxfill8
-	addl	$28, %esp
-L5:
-	call	_io_hlt
-	jmp	L5
+	pushl	$40
+	pushl	%esi
+	pushl	$30
+	pushl	$50
+	pushl	$14
+	pushl	%ebx
+	pushl	%edi
+	call	_boxfill8
+	leal	-55(%ebx), %eax
+	addl	$56, %esp
+	pushl	$38
+	pushl	%eax
+	leal	-60(%ebx), %eax
+	pushl	$33
+	pushl	%eax
+	pushl	$1
+	pushl	%ebx
+	pushl	%edi
+	call	_boxfill8
+	leal	-12(%ebp), %esp
+	popl	%ebx
+	popl	%esi
+	popl	%edi
+	popl	%ebp
+	ret
+	.balign 2
+.globl _putfont8
+	.def	_putfont8;	.scl	2;	.type	32;	.endef
+_putfont8:
+	pushl	%ebp
+	movl	%esp, %ebp
+	pushl	%edi
+	pushl	%esi
+	xorl	%esi, %esi
+	pushl	%ebx
+	movl	28(%ebp), %edi
+	movb	24(%ebp), %bl
+L26:
+	movl	20(%ebp), %eax
+	movl	16(%ebp), %edx
+	addl	%esi, %eax
+	imull	12(%ebp), %eax
+	addl	8(%ebp), %eax
+	leal	(%edx,%eax), %ecx
+	movb	(%esi,%edi), %dl
+	testb	%dl, %dl
+	jns	L18
+	movb	%bl, (%ecx)
+L18:
+	movb	%dl, %al
+	andl	$64, %eax
+	testb	%al, %al
+	je	L19
+	movb	%bl, 1(%ecx)
+L19:
+	movb	%dl, %al
+	andl	$32, %eax
+	testb	%al, %al
+	je	L20
+	movb	%bl, 2(%ecx)
+L20:
+	movb	%dl, %al
+	andl	$16, %eax
+	testb	%al, %al
+	je	L21
+	movb	%bl, 3(%ecx)
+L21:
+	movb	%dl, %al
+	andl	$8, %eax
+	testb	%al, %al
+	je	L22
+	movb	%bl, 4(%ecx)
+L22:
+	movb	%dl, %al
+	andl	$4, %eax
+	testb	%al, %al
+	je	L23
+	movb	%bl, 5(%ecx)
+L23:
+	movb	%dl, %al
+	andl	$2, %eax
+	testb	%al, %al
+	je	L24
+	movb	%bl, 6(%ecx)
+L24:
+	andl	$1, %edx
+	testb	%dl, %dl
+	je	L16
+	movb	%bl, 7(%ecx)
+L16:
+	incl	%esi
+	cmpl	$15, %esi
+	jle	L26
+	popl	%ebx
+	popl	%esi
+	popl	%edi
+	popl	%ebp
+	ret
 	.data
 _table_rgb.0:
 	.byte	0
@@ -115,18 +275,18 @@ _boxfill8:
 	movl	28(%ebp), %edi
 	movb	%al, -13(%ebp)
 	cmpl	32(%ebp), %ecx
-	jg	L19
+	jg	L42
 	movl	12(%ebp), %ebx
 	imull	%ecx, %ebx
-L17:
+L40:
 	movl	20(%ebp), %edx
 	cmpl	%edi, %edx
-	jg	L21
+	jg	L44
 	movl	8(%ebp), %esi
 	addl	%ebx, %esi
 	addl	%edx, %esi
 	movl	%esi, -20(%ebp)
-L16:
+L39:
 	movl	-20(%ebp), %esi
 	movb	-13(%ebp), %al
 	incl	%edx
@@ -134,13 +294,13 @@ L16:
 	incl	%esi
 	movl	%esi, -20(%ebp)
 	cmpl	%edi, %edx
-	jle	L16
-L21:
+	jle	L39
+L44:
 	incl	%ecx
 	addl	12(%ebp), %ebx
 	cmpl	32(%ebp), %ecx
-	jle	L17
-L19:
+	jle	L40
+L42:
 	popl	%eax
 	popl	%edx
 	popl	%ebx
@@ -170,8 +330,8 @@ _set_palette:
 	cmpl	%edi, %ebx
 	popl	%eax
 	popl	%edx
-	jle	L27
-L29:
+	jle	L50
+L52:
 	movl	-16(%ebp), %eax
 	movl	%eax, 8(%ebp)
 	leal	-12(%ebp), %esp
@@ -180,7 +340,7 @@ L29:
 	popl	%edi
 	popl	%ebp
 	jmp	_io_store_eflags
-L27:
+L50:
 	movb	(%esi), %al
 	incl	%ebx
 	shrb	$2, %al
@@ -203,13 +363,15 @@ L27:
 	call	_io_out8
 	addl	$24, %esp
 	cmpl	%edi, %ebx
-	jle	L27
-	jmp	L29
+	jle	L50
+	jmp	L52
 	.def	_io_store_eflags;	.scl	2;	.type	32;	.endef
 	.def	_io_out8;	.scl	2;	.type	32;	.endef
 	.def	_io_cli;	.scl	2;	.type	32;	.endef
 	.def	_io_load_eflags;	.scl	2;	.type	32;	.endef
 	.def	_set_palette;	.scl	2;	.type	32;	.endef
-	.def	_io_hlt;	.scl	2;	.type	32;	.endef
 	.def	_boxfill8;	.scl	2;	.type	32;	.endef
+	.def	_io_hlt;	.scl	2;	.type	32;	.endef
+	.def	_putfont8;	.scl	2;	.type	32;	.endef
+	.def	_init_screen;	.scl	2;	.type	32;	.endef
 	.def	_init_palette;	.scl	2;	.type	32;	.endef

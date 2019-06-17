@@ -21,24 +21,81 @@ void io_out8(int port, int data);
 int io_load_eflags();
 void io_store_eflags(int eflags);
 
+void init_screen(char* vram, int xsize, int ysize);
 void init_palette();
+void putfont8(char* vram, int xsize, int x, int y, char c, char* font);
 void set_palette(int start, int end, unsigned char *rgb);
 
+struct BOOTINFO {
+	char cyls, leds, vmode, reserve;
+	short scrnx, scrny;
+	char* vram;
+};
+
 void HariMain(void) {
-	int i;
-	char* p;
+	struct BOOTINFO* binfo = (struct BOOTINFO*) 0x0ff0;
+	extern char hankaku[4096];
 
 	init_palette();
+	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 
-	p = (char*)0xA0000;
+	char str[11] = { 'C', 'a', 'n', 'o', 'p', 'u', 's', ' ', 'O', 'S' };
 
-	boxfill8(p, 320, COL8_LIGHT_RED,	20,  20, 120, 120);
-	boxfill8(p, 320, COL8_LIGHT_GREEN,	70,  50, 170, 150);
-	boxfill8(p, 320, COL8_LIGHT_BLUE,	120, 80, 220, 180);
+	int i;
+	for (i = 0; i < 10; i++) {
+		putfont8(binfo->vram, binfo->scrnx, 60+8*i, 50, COL8_BLACK, hankaku + str[i] * 16);
+	}
 
 	while (1) {
 		io_hlt();
 	}
+}
+
+void init_screen(char* vram, int xsize, int ysize) {
+	boxfill8(vram, xsize, COL8_LIGHT_GRAY, 0, 0, xsize, ysize);
+	boxfill8(vram, xsize, COL8_DARK_GRAY, 0, ysize - 10, xsize, ysize);
+
+	boxfill8(vram, xsize, COL8_WHITE, 50, 30, xsize - 50, ysize - 40);
+	boxfill8(vram, xsize, COL8_DARK_SKYBLUE, 50, 30, xsize - 50, 40);
+	boxfill8(vram, xsize, COL8_LIGHT_RED, xsize - 60, 33, xsize - 55, 38);
+
+	return;
+}
+
+void putfont8(char* vram, int xsize, int x, int y, char c, char *font) {
+	int i;
+	char* p, d;
+
+	for (i = 0; i < 16; i++) {
+		p = vram + (y + i) * xsize + x;
+		d = font[i];
+		if ((d & 0x80) != 0) {
+			p[0] = c;
+		}
+		if ((d & 0x40) != 0) {
+			p[1] = c;
+		}
+		if ((d & 0x20) != 0) {
+			p[2] = c;
+		}
+		if ((d & 0x10) != 0) {
+			p[3] = c;
+		}
+		if ((d & 0x08) != 0) {
+			p[4] = c;
+		}
+		if ((d & 0x04) != 0) {
+			p[5] = c;
+		}
+		if ((d & 0x02) != 0) {
+			p[6] = c;
+		}
+		if ((d & 0x01) != 0) {
+			p[7] = c;
+		}
+	}
+
+	return;
 }
 
 void init_palette() {
