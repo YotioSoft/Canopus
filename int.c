@@ -1,0 +1,53 @@
+// bootpack main
+
+#include "bootpack.h"
+
+#define PORT_KEYDAT		0x0060
+
+struct KEYBUF keybuf;
+
+// PICの初期化
+void init_pic() {
+	io_out8(PIC0_IMR, 0xFF);		// すべての割り込みを受け付けない
+	io_out8(PIC1_IMR, 0xFF);		// すべての割り込みを受け付けない
+
+	io_out8(PIC0_ICW1, 0x11);		// エッジトリガモード
+	io_out8(PIC0_ICW2, 0x20);		// IRQ0-7は INT20-27で受ける
+	io_out8(PIC0_ICW3, 1 << 2);		// PIC1はIRQ2にて接続
+	io_out8(PIC0_ICW4, 0x01);		// ノンバッファモード
+
+	io_out8(PIC1_ICW1, 0x11);		// エッジトリガモード
+	io_out8(PIC1_ICW2, 0x28);		// IRQ8-15は INT28-2Fで受ける
+	io_out8(PIC1_ICW3, 2);			// PIC1はIRQ2にて接続
+	io_out8(PIC1_ICW4, 0x01);		// ノンバッファモード
+
+	io_out8(PIC0_IMR, 0xFB);		// 11111011 PIC1以外はすべて禁止
+	io_out8(PIC1_IMR, 0xFF);		// 11111111 すべての割り込みを受け付けない
+
+	return;
+}
+
+// PS/2キーからの割り込み
+void inthandler21(int* esp) {
+	unsigned char data;
+	io_out8(PIC0_OCW2, 0x61);
+	data = io_in8(PORT_KEYDAT);
+
+	if (keybuf.next < 32) {
+		keybuf.data[keybuf.next] = data;
+		keybuf.next++;
+	}
+
+	return;
+}
+
+// PS/2マウスからの割り込み
+void inthandler2c(int* esp) {
+	struct BOOTINFO* binfo = (struct BOOTINFO*) ADR_BOOTINFO;
+	boxfill8(binfo->vram, binfo->scrnx, COL8_BLACK, 0, 0, 32 * 8 - 1, 15);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_WHITE, "INT 2C (IRQ-12) : PS/2 mouse");
+
+	while (1) {
+		io_hlt();
+	}
+}
