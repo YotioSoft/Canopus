@@ -10,8 +10,8 @@
 	EXTERN	_io_store_eflags
 [FILE "graphic.c"]
 [SECTION .text]
-	GLOBAL	_init_screen
-_init_screen:
+	GLOBAL	_init_screen8
+_init_screen8:
 	PUSH	EBP
 	MOV	EBP,ESP
 	PUSH	EDI

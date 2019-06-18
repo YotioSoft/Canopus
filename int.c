@@ -2,9 +2,7 @@
 
 #include "bootpack.h"
 
-#define PORT_KEYDAT		0x0060
-
-struct KEYBUF keybuf;
+struct FIFO8 keyfifo, mousefifo;
 
 // PICÇÃèâä˙âª
 void init_pic() {
@@ -32,22 +30,18 @@ void inthandler21(int* esp) {
 	unsigned char data;
 	io_out8(PIC0_OCW2, 0x61);
 	data = io_in8(PORT_KEYDAT);
-
-	if (keybuf.next < 32) {
-		keybuf.data[keybuf.next] = data;
-		keybuf.next++;
-	}
+	fifo8_put(&keyfifo, data);
 
 	return;
 }
 
 // PS/2É}ÉEÉXÇ©ÇÁÇÃäÑÇËçûÇ›
 void inthandler2c(int* esp) {
-	struct BOOTINFO* binfo = (struct BOOTINFO*) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrnx, COL8_BLACK, 0, 0, 32 * 8 - 1, 15);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_WHITE, "INT 2C (IRQ-12) : PS/2 mouse");
+	unsigned char data;
+	io_out8(PIC1_OCW2, 0x64);
+	io_out8(PIC0_OCW2, 0x62);
+	data = io_in8(PORT_KEYDAT);
+	fifo8_put(&mousefifo, data);
 
-	while (1) {
-		io_hlt();
-	}
+	return;
 }

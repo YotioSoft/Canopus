@@ -1,5 +1,19 @@
 #include <stdio.h>
 
+// bootpack.c
+#define PORT_KEYDAT				0x0060
+#define PORT_KETSTA				0x0064
+#define PORT_KEYCMD				0x0064
+#define KEYSTA_SEND_NOTREADY	0x02
+#define KEYCMD_WRITE_MODE		0x60
+#define KBC_MODE				0x47
+#define KEYCMD_SENDTO_MOUSE		0xD4
+#define MOUSECMD_ENABLE			0xF4
+
+void wait_KBC_sendready();
+void init_keyboard();
+void enable_mouse();
+
 // asmhead.nas
 struct BOOTINFO {
 	char cyls, leds, vmode, reserve;
@@ -23,7 +37,7 @@ void asm_inthandler21();
 void asm_inthandler2c();
 
 // graphic.c
-void init_screen(char* vram, int xsize, int ysize);
+void init_screen8(char* vram, int xsize, int ysize);
 void init_palette();
 void putfont8(char* vram, int xsize, int x, int y, char c, char* font);
 void putfonts8_asc(char* vram, int xsize, int x, int y, char c, unsigned char* s);
@@ -77,11 +91,6 @@ void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 #define AR_INTGATE32	0x008E
 
 // int.c
-struct KEYBUF {
-	unsigned char data[32];
-	int next;
-};
-
 void init_pic();
 void inthandler21(int* esp);
 void inthandler2c(int* esp);
@@ -98,3 +107,14 @@ void inthandler2c(int* esp);
 #define PIC1_ICW2	0x00A1
 #define PIC1_ICW3	0x00A1
 #define PIC1_ICW4	0x00A1
+
+// fifo.c
+struct FIFO8 {
+	unsigned char* buf;
+	int p, q, size, free, flags;
+};
+
+void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
+int fifo8_put(struct FIFO8* fifo, unsigned char data);
+int fifo8_get(struct FIFO8* fifo);
+int fifo8_status(struct FIFO8* fifo);

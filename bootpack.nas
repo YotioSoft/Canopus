@@ -3,29 +3,30 @@
 [OPTIMIZE 1]
 [OPTION 1]
 [BITS 32]
-	EXTERN	_init_pic
 	EXTERN	_init_gdtidt
-	EXTERN	_init_palette
-	EXTERN	_init_screen
+	EXTERN	_init_pic
 	EXTERN	_io_sti
-	EXTERN	_putfonts8_asc
+	EXTERN	_keyfifo
+	EXTERN	_fifo8_init
+	EXTERN	_mousefifo
+	EXTERN	_io_out8
+	EXTERN	_init_palette
+	EXTERN	_init_screen8
 	EXTERN	_init_mouse_cursor8
 	EXTERN	_putblock8_8
 	EXTERN	_sprintf
-	EXTERN	_io_out8
+	EXTERN	_putfonts8_asc
 	EXTERN	_io_cli
-	EXTERN	_keybuf
+	EXTERN	_fifo8_status
+	EXTERN	_fifo8_get
 	EXTERN	_boxfill8
 	EXTERN	_io_stihlt
+	EXTERN	_io_in8
 [FILE "bootpack.c"]
 [SECTION .data]
 LC0:
-	DB	"Welcome to",0x00
-LC1:
-	DB	"Canopus OS",0x00
-LC2:
 	DB	"(%d, %d)",0x00
-LC3:
+LC1:
 	DB	"%02X",0x00
 [SECTION .text]
 	GLOBAL	_HariMain
@@ -36,34 +37,35 @@ _HariMain:
 	PUSH	ESI
 	PUSH	EBX
 	MOV	EBX,2
-	SUB	ESP,304
-	CALL	_init_pic
+	SUB	ESP,464
 	CALL	_init_gdtidt
+	CALL	_init_pic
+	CALL	_io_sti
+	LEA	EAX,DWORD [-348+EBP]
+	PUSH	EAX
+	PUSH	32
+	PUSH	_keyfifo
+	CALL	_fifo8_init
+	LEA	EAX,DWORD [-476+EBP]
+	PUSH	EAX
+	PUSH	128
+	PUSH	_mousefifo
+	CALL	_fifo8_init
+	PUSH	249
+	PUSH	33
+	CALL	_io_out8
+	ADD	ESP,32
+	PUSH	239
+	PUSH	161
+	CALL	_io_out8
+	CALL	_init_keyboard
 	CALL	_init_palette
 	MOVSX	EAX,WORD [4086]
 	PUSH	EAX
 	MOVSX	EAX,WORD [4084]
 	PUSH	EAX
 	PUSH	DWORD [4088]
-	CALL	_init_screen
-	CALL	_io_sti
-	PUSH	LC0
-	PUSH	0
-	PUSH	50
-	PUSH	60
-	MOVSX	EAX,WORD [4084]
-	PUSH	EAX
-	PUSH	DWORD [4088]
-	CALL	_putfonts8_asc
-	ADD	ESP,36
-	PUSH	LC1
-	PUSH	0
-	PUSH	70
-	PUSH	70
-	MOVSX	EAX,WORD [4084]
-	PUSH	EAX
-	PUSH	DWORD [4088]
-	CALL	_putfonts8_asc
+	CALL	_init_screen8
 	MOV	EDX,DWORD [4084]
 	MOV	EAX,EDX
 	CWD
@@ -80,7 +82,6 @@ _HariMain:
 	PUSH	EBX
 	LEA	ESI,DWORD [-8+EAX]
 	CALL	_init_mouse_cursor8
-	ADD	ESP,32
 	PUSH	16
 	PUSH	EBX
 	LEA	EBX,DWORD [-60+EBP]
@@ -92,10 +93,10 @@ _HariMain:
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_putblock8_8
-	ADD	ESP,32
+	ADD	ESP,60
 	PUSH	ESI
 	PUSH	EDI
-	PUSH	LC2
+	PUSH	LC0
 	PUSH	EBX
 	CALL	_sprintf
 	PUSH	EBX
@@ -107,36 +108,67 @@ _HariMain:
 	PUSH	DWORD [4088]
 	CALL	_putfonts8_asc
 	ADD	ESP,40
-	PUSH	249
-	PUSH	33
-	CALL	_io_out8
-	PUSH	249
-	PUSH	161
-	CALL	_io_out8
-	ADD	ESP,16
-L12:
+	CALL	_enable_mouse
+L10:
 	CALL	_io_cli
-	MOV	EAX,DWORD [_keybuf+32]
+	PUSH	_keyfifo
+	CALL	_fifo8_status
+	PUSH	_mousefifo
+	MOV	EBX,EAX
+	CALL	_fifo8_status
+	LEA	EAX,DWORD [EAX+EBX*1]
+	POP	EBX
+	POP	ESI
 	TEST	EAX,EAX
-	JE	L15
-	DEC	EAX
-	XOR	EDX,EDX
-	MOVZX	EBX,BYTE [_keybuf]
-	MOV	DWORD [_keybuf+32],EAX
-	CMP	EDX,EAX
-	JGE	L14
-	MOV	ECX,EAX
-L11:
-	MOV	AL,BYTE [_keybuf+1+EDX]
-	MOV	BYTE [_keybuf+EDX],AL
-	INC	EDX
-	CMP	EDX,ECX
-	JL	L11
-L14:
+	JE	L12
+	PUSH	_keyfifo
+	CALL	_fifo8_status
+	POP	ECX
+	TEST	EAX,EAX
+	JNE	L13
+	PUSH	_mousefifo
+	CALL	_fifo8_status
+	POP	EDX
+	TEST	EAX,EAX
+	JE	L10
+	PUSH	_mousefifo
+	CALL	_fifo8_get
+	MOV	EBX,EAX
 	CALL	_io_sti
 	PUSH	EBX
-	PUSH	LC3
 	LEA	EBX,DWORD [-60+EBP]
+	PUSH	LC1
+	PUSH	EBX
+	CALL	_sprintf
+	PUSH	31
+	PUSH	47
+	PUSH	16
+	PUSH	32
+	PUSH	15
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	DWORD [4088]
+	CALL	_boxfill8
+	ADD	ESP,44
+	PUSH	EBX
+	PUSH	7
+	PUSH	16
+	PUSH	32
+L11:
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	DWORD [4088]
+	CALL	_putfonts8_asc
+	ADD	ESP,24
+	JMP	L10
+L13:
+	PUSH	_keyfifo
+	CALL	_fifo8_get
+	MOV	EBX,EAX
+	CALL	_io_sti
+	PUSH	EBX
+	LEA	EBX,DWORD [-60+EBP]
+	PUSH	LC1
 	PUSH	EBX
 	CALL	_sprintf
 	PUSH	31
@@ -148,17 +180,52 @@ L14:
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_boxfill8
-	ADD	ESP,40
+	ADD	ESP,44
 	PUSH	EBX
 	PUSH	7
 	PUSH	16
 	PUSH	0
-	MOVSX	EAX,WORD [4084]
-	PUSH	EAX
-	PUSH	DWORD [4088]
-	CALL	_putfonts8_asc
-	ADD	ESP,24
-	JMP	L12
-L15:
+	JMP	L11
+L12:
 	CALL	_io_stihlt
-	JMP	L12
+	JMP	L10
+	GLOBAL	_wait_KBC_sendready
+_wait_KBC_sendready:
+	PUSH	EBP
+	MOV	EBP,ESP
+L19:
+	PUSH	100
+	CALL	_io_in8
+	POP	EDX
+	AND	EAX,2
+	JNE	L19
+	LEAVE
+	RET
+	GLOBAL	_init_keyboard
+_init_keyboard:
+	PUSH	EBP
+	MOV	EBP,ESP
+	CALL	_wait_KBC_sendready
+	PUSH	96
+	PUSH	100
+	CALL	_io_out8
+	CALL	_wait_KBC_sendready
+	PUSH	71
+	PUSH	96
+	CALL	_io_out8
+	LEAVE
+	RET
+	GLOBAL	_enable_mouse
+_enable_mouse:
+	PUSH	EBP
+	MOV	EBP,ESP
+	CALL	_wait_KBC_sendready
+	PUSH	212
+	PUSH	100
+	CALL	_io_out8
+	CALL	_wait_KBC_sendready
+	PUSH	244
+	PUSH	96
+	CALL	_io_out8
+	LEAVE
+	RET

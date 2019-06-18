@@ -1,7 +1,7 @@
 // グラフィック処理関係
 #include "bootpack.h"
 
-void init_screen(char* vram, int xsize, int ysize) {
+void init_screen8(char* vram, int xsize, int ysize) {
 	boxfill8(vram, xsize, COL8_LIGHT_GRAY, 0, 0, xsize, ysize);
 	boxfill8(vram, xsize, COL8_DARK_GRAY, 0, ysize - 10, xsize, ysize);
 

@@ -1,9 +1,9 @@
 	.file	"graphic.c"
 	.text
 	.balign 2
-.globl _init_screen
-	.def	_init_screen;	.scl	2;	.type	32;	.endef
-_init_screen:
+.globl _init_screen8
+	.def	_init_screen8;	.scl	2;	.type	32;	.endef
+_init_screen8:
 	pushl	%ebp
 	movl	%esp, %ebp
 	pushl	%edi

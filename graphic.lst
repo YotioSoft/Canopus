@@ -10,8 +10,8 @@
     10 00000000                                 	EXTERN	_io_store_eflags
     11 00000000                                 [FILE "graphic.c"]
     12                                          [SECTION .text]
-    13 00000000                                 	GLOBAL	_init_screen
-    14 00000000                                 _init_screen:
+    13 00000000                                 	GLOBAL	_init_screen8
+    14 00000000                                 _init_screen8:
     15 00000000 55                              	PUSH	EBP
     16 00000001 89 E5                           	MOV	EBP,ESP
     17 00000003 57                              	PUSH	EDI
