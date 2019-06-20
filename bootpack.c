@@ -30,13 +30,14 @@ void HariMain() {
 
 	mx = binfo->scrnx / 2 - 16 / 2;
 	my = binfo->scrny / 2 - 16 / 2;
-	init_mouse_cursor8(mcursor, COL8_WHITE);
+	init_mouse_cursor8(mcursor, COL8_LIGHT_GRAY);
 	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_WHITE, s);
 
-	enable_mouse();
+	struct MOUSE_DEC mdec;
+	enable_mouse(&mdec);
 
 	while (1) {
 		io_cli();
@@ -57,9 +58,43 @@ void HariMain() {
 				i = fifo8_get(&mousefifo);
 
 				io_sti();
-				sprintf(s, "%02X", i);
-				boxfill8(binfo->vram, binfo->scrnx, COL8_DARK_GRAY, 32, 16, 47, 31);
-				putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_WHITE, s);
+
+				if (mouse_decode(&mdec, i) != 0) {
+					sprintf(s, "[lcr %4d %4d]", mdec.x, mdec.y);
+					if ((mdec.btn & 0x01) != 0) {
+						s[1] = 'L';
+					}
+					if ((mdec.btn & 0x02) != 0) {
+						s[3] = 'R';
+					}
+					if ((mdec.btn & 0x04) != 0) {
+						s[2] = 'C';
+					}
+
+					boxfill8(binfo->vram, binfo->scrnx, COL8_DARK_GRAY, 32, 16, 32 + 15 * 8 - 1, 31);
+					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_WHITE, s);
+
+					// マウスカーソルの移動
+					boxfill8(binfo->vram, binfo->scrnx, COL8_LIGHT_GRAY, mx, my, mx + 15, my + 15);
+					mx += mdec.x;
+					my += mdec.y;
+					if (mx < 0) {
+						mx = 0;
+					}
+					if (my < 0) {
+						my = 0;
+					}
+					if (mx > binfo->scrnx - 16) {
+						mx = binfo->scrnx - 16;
+					}
+					if (my > binfo->scrny - 16) {
+						my = binfo->scrny - 16;
+					}
+					sprintf(s, "(%3d, %3d)", mx, my);
+					boxfill8(binfo->vram, binfo->scrnx, COL8_LIGHT_GRAY, 0, 0, 79, 15);
+					putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_WHITE, s);
+					putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+				}
 			}
 		}
 	}
@@ -87,11 +122,52 @@ void init_keyboard() {
 }
 
 // マウス有効化
-void enable_mouse() {
+void enable_mouse(struct MOUSE_DEC* mdec) {
 	wait_KBC_sendready();
 	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
 	wait_KBC_sendready();
 	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
 
+	mdec->phrase = 0;
 	return;
+}
+
+int mouse_decode(struct MOUSE_DEC* mdec, unsigned char dat) {
+	if (mdec->phrase == 0) {
+		if (dat == 0xFA) {
+			mdec->phrase = 1;
+		}
+		return 0;
+	}
+	else if (mdec->phrase == 1) {
+		if ((dat & 0xC8) == 0x08) {
+			mdec->buf[0] = dat;
+			mdec->phrase = 2;
+		}
+		return 0;
+	}
+	else if (mdec->phrase == 2) {
+		mdec->buf[1] = dat;
+		mdec->phrase = 3;
+		return 0;
+	}
+	else if (mdec->phrase == 3) {
+		mdec->buf[2] = dat;
+		mdec->phrase = 1;
+		mdec->btn = mdec->buf[0] & 0x07;
+		mdec->x = mdec->buf[1];
+		mdec->y = mdec->buf[2];
+
+		if ((mdec->buf[0] & 0x10) != 0) {
+			mdec->x |= 0xFFFFFF00;
+		}
+		if ((mdec->buf[0] & 0x20) != 0) {
+			mdec->y |= 0xFFFFFF00;
+		}
+		mdec->y = -mdec->y;
+
+		return 1;
+	}
+
+	return -1;
 }

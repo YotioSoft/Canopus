@@ -5,10 +5,11 @@ void init_screen8(char* vram, int xsize, int ysize) {
 	boxfill8(vram, xsize, COL8_LIGHT_GRAY, 0, 0, xsize, ysize);
 	boxfill8(vram, xsize, COL8_DARK_GRAY, 0, ysize - 10, xsize, ysize);
 
+	/*
 	boxfill8(vram, xsize, COL8_WHITE, 50, 30, xsize - 50, ysize - 40);
 	boxfill8(vram, xsize, COL8_DARK_SKYBLUE, 50, 30, xsize - 50, 40);
 	boxfill8(vram, xsize, COL8_LIGHT_RED, xsize - 60, 33, xsize - 55, 38);
-
+	*/
 	return;
 }
 

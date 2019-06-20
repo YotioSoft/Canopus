@@ -1,6 +1,11 @@
 #include <stdio.h>
 
 // bootpack.c
+struct MOUSE_DEC {
+	unsigned char buf[3], phrase;
+	int x, y, btn;
+};
+
 #define PORT_KEYDAT				0x0060
 #define PORT_KETSTA				0x0064
 #define PORT_KEYCMD				0x0064
@@ -13,6 +18,8 @@
 void wait_KBC_sendready();
 void init_keyboard();
 void enable_mouse();
+void enable_mouse(struct MOUSE_DEC* mdec);
+int mouse_decode(struct MOUSE_DEC* mdec, unsigned char dat);
 
 // asmhead.nas
 struct BOOTINFO {

@@ -9,54 +9,24 @@ _init_screen8:
 	pushl	%edi
 	pushl	%esi
 	pushl	%ebx
-	movl	16(%ebp), %esi
-	pushl	%esi
-	movl	12(%ebp), %ebx
-	pushl	%ebx
+	movl	12(%ebp), %esi
+	movl	16(%ebp), %ebx
 	movl	8(%ebp), %edi
+	pushl	%ebx
+	pushl	%esi
 	pushl	$0
 	pushl	$0
 	pushl	$8
-	pushl	%ebx
+	pushl	%esi
 	pushl	%edi
 	call	_boxfill8
-	leal	-10(%esi), %eax
-	pushl	%esi
-	subl	$40, %esi
 	pushl	%ebx
-	pushl	%eax
+	pushl	%esi
+	subl	$10, %ebx
+	pushl	%ebx
 	pushl	$0
 	pushl	$15
-	pushl	%ebx
-	pushl	%edi
-	call	_boxfill8
-	addl	$56, %esp
 	pushl	%esi
-	leal	-50(%ebx), %esi
-	pushl	%esi
-	pushl	$30
-	pushl	$50
-	pushl	$7
-	pushl	%ebx
-	pushl	%edi
-	call	_boxfill8
-	pushl	$40
-	pushl	%esi
-	pushl	$30
-	pushl	$50
-	pushl	$14
-	pushl	%ebx
-	pushl	%edi
-	call	_boxfill8
-	leal	-55(%ebx), %eax
-	addl	$56, %esp
-	pushl	$38
-	pushl	%eax
-	leal	-60(%ebx), %eax
-	pushl	$33
-	pushl	%eax
-	pushl	$1
-	pushl	%ebx
 	pushl	%edi
 	call	_boxfill8
 	leal	-12(%ebp), %esp
