@@ -2,11 +2,13 @@
 	.data
 LC0:
 	.ascii "(%d, %d)\0"
-LC2:
-	.ascii "[lcr %4d %4d]\0"
-LC3:
-	.ascii "(%3d, %3d)\0"
 LC1:
+	.ascii "memory %dMB free : %dKB\0"
+LC3:
+	.ascii "[lcr %4d %4d]\0"
+LC4:
+	.ascii "(%3d, %3d)\0"
+LC2:
 	.ascii "%02X\0"
 	.text
 	.balign 2
@@ -19,7 +21,7 @@ _HariMain:
 	pushl	%esi
 	pushl	%ebx
 	leal	-316(%ebp), %ebx
-	subl	$484, %esp
+	subl	$488, %esp
 	call	_init_gdtidt
 	call	_init_pic
 	call	_io_sti
@@ -41,6 +43,26 @@ _HariMain:
 	pushl	$161
 	call	_io_out8
 	call	_init_keyboard
+	leal	-492(%ebp), %eax
+	pushl	%eax
+	call	_enable_mouse
+	pushl	$-1073741825
+	pushl	$4194304
+	call	_memtest
+	pushl	$3932160
+	movl	%eax, -496(%ebp)
+	call	_memman_init
+	pushl	$647168
+	pushl	$4096
+	pushl	$3932160
+	call	_memman_free
+	movl	-496(%ebp), %eax
+	addl	$36, %esp
+	subl	$4194304, %eax
+	pushl	%eax
+	pushl	$4194304
+	pushl	$3932160
+	call	_memman_free
 	call	_init_palette
 	movswl	4086,%eax
 	pushl	%eax
@@ -53,29 +75,30 @@ _HariMain:
 	cwtd
 	idivw	%cx
 	cwtl
-	leal	-8(%eax), %edi
+	leal	-8(%eax), %esi
 	movw	4086, %ax
 	cwtd
 	idivw	%cx
-	pushl	$8
 	cwtl
+	pushl	$8
 	pushl	%ebx
-	leal	-8(%eax), %esi
+	leal	-8(%eax), %edi
 	call	_init_mouse_cursor8
+	addl	$32, %esp
 	pushl	$16
 	pushl	%ebx
 	leal	-60(%ebp), %ebx
-	pushl	%esi
 	pushl	%edi
+	pushl	%esi
 	pushl	$16
 	pushl	$16
 	movswl	4084,%eax
 	pushl	%eax
 	pushl	4088
 	call	_putblock8_8
-	addl	$60, %esp
-	pushl	%esi
+	addl	$32, %esp
 	pushl	%edi
+	pushl	%esi
 	pushl	$LC0
 	pushl	%ebx
 	call	_sprintf
@@ -87,11 +110,25 @@ _HariMain:
 	pushl	%eax
 	pushl	4088
 	call	_putfonts8_asc
-	leal	-492(%ebp), %eax
 	addl	$40, %esp
+	pushl	$3932160
+	call	_memman_total
+	shrl	$20, -496(%ebp)
+	shrl	$10, %eax
+	movl	%eax, (%esp)
+	pushl	-496(%ebp)
+	pushl	$LC1
+	pushl	%ebx
+	call	_sprintf
+	pushl	%ebx
+	pushl	$7
+	pushl	$32
+	pushl	$0
+	movswl	4084,%eax
 	pushl	%eax
-	call	_enable_mouse
-	popl	%ecx
+	pushl	4088
+	call	_putfonts8_asc
+	addl	$40, %esp
 L18:
 	call	_io_cli
 	pushl	$_keyfifo
@@ -128,7 +165,7 @@ L18:
 	je	L18
 	pushl	-484(%ebp)
 	pushl	-488(%ebp)
-	pushl	$LC2
+	pushl	$LC3
 	leal	-60(%ebp), %ebx
 	pushl	%ebx
 	call	_sprintf
@@ -163,41 +200,41 @@ L13:
 	pushl	%eax
 	pushl	4088
 	call	_putfonts8_asc
-	leal	15(%esi), %eax
+	leal	15(%edi), %eax
 	addl	$52, %esp
 	pushl	%eax
-	leal	15(%edi), %eax
+	leal	15(%esi), %eax
 	pushl	%eax
-	pushl	%esi
 	pushl	%edi
+	pushl	%esi
 	pushl	$8
 	movswl	4084,%eax
 	pushl	%eax
 	pushl	4088
 	call	_boxfill8
 	addl	$28, %esp
-	addl	-484(%ebp), %esi
-	addl	-488(%ebp), %edi
+	addl	-484(%ebp), %edi
+	addl	-488(%ebp), %esi
 	js	L21
 L14:
-	testl	%esi, %esi
+	testl	%edi, %edi
 	js	L22
 L15:
 	movswl	4084,%eax
 	subl	$16, %eax
-	cmpl	%eax, %edi
+	cmpl	%eax, %esi
 	jle	L16
-	movl	%eax, %edi
+	movl	%eax, %esi
 L16:
 	movswl	4086,%eax
 	subl	$16, %eax
-	cmpl	%eax, %esi
+	cmpl	%eax, %edi
 	jle	L17
-	movl	%eax, %esi
+	movl	%eax, %edi
 L17:
-	pushl	%esi
 	pushl	%edi
-	pushl	$LC3
+	pushl	%esi
+	pushl	$LC4
 	pushl	%ebx
 	call	_sprintf
 	pushl	$15
@@ -221,8 +258,8 @@ L17:
 	leal	-316(%ebp), %eax
 	pushl	$16
 	pushl	%eax
-	pushl	%esi
 	pushl	%edi
+	pushl	%esi
 	pushl	$16
 	pushl	$16
 	movswl	4084,%eax
@@ -232,10 +269,10 @@ L17:
 	addl	$56, %esp
 	jmp	L18
 L22:
-	xorl	%esi, %esi
+	xorl	%edi, %edi
 	jmp	L15
 L21:
-	xorl	%edi, %edi
+	xorl	%esi, %esi
 	jmp	L14
 L20:
 	pushl	$_keyfifo
@@ -244,7 +281,7 @@ L20:
 	call	_io_sti
 	pushl	%ebx
 	leal	-60(%ebp), %ebx
-	pushl	$LC1
+	pushl	$LC2
 	pushl	%ebx
 	call	_sprintf
 	pushl	$31
@@ -271,140 +308,282 @@ L19:
 	call	_io_stihlt
 	jmp	L18
 	.balign 2
-.globl _wait_KBC_sendready
-	.def	_wait_KBC_sendready;	.scl	2;	.type	32;	.endef
-_wait_KBC_sendready:
-	pushl	%ebp
-	movl	%esp, %ebp
-L28:
-	pushl	$100
-	call	_io_in8
-	popl	%edx
-	andl	$2, %eax
-	jne	L28
-	leave
-	ret
-	.balign 2
-.globl _init_keyboard
-	.def	_init_keyboard;	.scl	2;	.type	32;	.endef
-_init_keyboard:
-	pushl	%ebp
-	movl	%esp, %ebp
-	call	_wait_KBC_sendready
-	pushl	$96
-	pushl	$100
-	call	_io_out8
-	call	_wait_KBC_sendready
-	pushl	$71
-	pushl	$96
-	call	_io_out8
-	leave
-	ret
-	.balign 2
-.globl _enable_mouse
-	.def	_enable_mouse;	.scl	2;	.type	32;	.endef
-_enable_mouse:
-	pushl	%ebp
-	movl	%esp, %ebp
-	call	_wait_KBC_sendready
-	pushl	$212
-	pushl	$100
-	call	_io_out8
-	call	_wait_KBC_sendready
-	pushl	$244
-	pushl	$96
-	call	_io_out8
-	movl	8(%ebp), %eax
-	movb	$0, 3(%eax)
-	leave
-	ret
-	.balign 2
-.globl _mouse_decode
-	.def	_mouse_decode;	.scl	2;	.type	32;	.endef
-_mouse_decode:
+.globl _memtest
+	.def	_memtest;	.scl	2;	.type	32;	.endef
+_memtest:
 	pushl	%ebp
 	movl	%esp, %ebp
 	pushl	%esi
 	pushl	%ebx
-	movl	8(%ebp), %edx
-	movl	12(%ebp), %ecx
-	movl	%ecx, %esi
-	movb	3(%edx), %al
+	xorl	%esi, %esi
+	call	_io_load_eflags
+	movl	%eax, %ebx
+	orl	$262144, %ebx
+	pushl	%ebx
+	call	_io_store_eflags
+	popl	%eax
+	testl	$262144, %ebx
+	je	L24
+	movl	$1, %esi
+L24:
+	andl	$-262145, %ebx
+	pushl	%ebx
+	call	_io_store_eflags
+	movl	%esi, %eax
+	popl	%ebx
 	testb	%al, %al
-	jne	L32
-	cmpb	$-6, %cl
-	je	L44
-L43:
-	xorl	%eax, %eax
-L31:
+	jne	L27
+L25:
+	pushl	12(%ebp)
+	pushl	8(%ebp)
+	call	_memtest_sub
+	movl	%eax, %ebx
+	popl	%eax
+	movl	%esi, %eax
+	popl	%edx
+	testb	%al, %al
+	jne	L28
+L26:
+	leal	-8(%ebp), %esp
+	movl	%ebx, %eax
 	popl	%ebx
 	popl	%esi
 	popl	%ebp
 	ret
+L28:
+	call	_load_cr0
+	andl	$-1610612737, %eax
+	pushl	%eax
+	call	_store_cr0
+	popl	%ecx
+	jmp	L26
+L27:
+	call	_load_cr0
+	orl	$1610612736, %eax
+	pushl	%eax
+	call	_store_cr0
+	popl	%ecx
+	jmp	L25
+	.balign 2
+.globl _memman_init
+	.def	_memman_init;	.scl	2;	.type	32;	.endef
+_memman_init:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	8(%ebp), %eax
+	movl	$0, (%eax)
+	movl	$0, 4(%eax)
+	movl	$0, 8(%eax)
+	movl	$0, 12(%eax)
+	popl	%ebp
+	ret
+	.balign 2
+.globl _memman_total
+	.def	_memman_total;	.scl	2;	.type	32;	.endef
+_memman_total:
+	pushl	%ebp
+	xorl	%eax, %eax
+	movl	%esp, %ebp
+	xorl	%edx, %edx
+	pushl	%ebx
+	movl	8(%ebp), %ebx
+	movl	(%ebx), %ecx
+	cmpl	%ecx, %eax
+	jae	L37
+L35:
+	addl	20(%ebx,%edx,8), %eax
+	incl	%edx
+	cmpl	%ecx, %edx
+	jb	L35
+L37:
+	popl	%ebx
+	popl	%ebp
+	ret
+	.balign 2
+.globl _memman_alloc
+	.def	_memman_alloc;	.scl	2;	.type	32;	.endef
+_memman_alloc:
+	pushl	%ebp
+	xorl	%ecx, %ecx
+	movl	%esp, %ebp
+	pushl	%edi
+	pushl	%esi
+	pushl	%ebx
+	movl	12(%ebp), %esi
+	movl	8(%ebp), %ebx
+	movl	(%ebx), %eax
+	cmpl	%eax, %ecx
+	jae	L52
+L50:
+	movl	20(%ebx,%ecx,8), %edx
+	cmpl	%esi, %edx
+	jae	L54
+	incl	%ecx
+	cmpl	%eax, %ecx
+	jb	L50
+L52:
+	xorl	%eax, %eax
+L38:
+	popl	%ebx
+	popl	%esi
+	popl	%edi
+	popl	%ebp
+	ret
+L54:
+	movl	16(%ebx,%ecx,8), %edi
+	leal	(%esi,%edi), %eax
+	movl	%eax, 16(%ebx,%ecx,8)
+	movl	%edx, %eax
+	subl	%esi, %eax
+	movl	%eax, 20(%ebx,%ecx,8)
+	testl	%eax, %eax
+	jne	L44
+	movl	(%ebx), %eax
+	decl	%eax
+	movl	%eax, (%ebx)
+	cmpl	%eax, %ecx
+	jae	L44
+	movl	%eax, %esi
+L49:
+	movl	24(%ebx,%ecx,8), %eax
+	movl	28(%ebx,%ecx,8), %edx
+	movl	%eax, 16(%ebx,%ecx,8)
+	movl	%edx, 20(%ebx,%ecx,8)
+	incl	%ecx
+	cmpl	%esi, %ecx
+	jb	L49
 L44:
-	movb	$1, 3(%edx)
-	jmp	L43
-L32:
-	cmpb	$1, %al
-	je	L45
-	cmpb	$2, %al
-	je	L46
-	cmpb	$3, %al
-	je	L47
+	movl	%edi, %eax
+	jmp	L38
+	.balign 2
+.globl _memman_free
+	.def	_memman_free;	.scl	2;	.type	32;	.endef
+_memman_free:
+	pushl	%ebp
+	movl	%esp, %ebp
+	pushl	%edi
+	pushl	%esi
+	movl	8(%ebp), %esi
+	pushl	%ebx
+	xorl	%ebx, %ebx
+	movl	(%esi), %edi
+	cmpl	%edi, %ebx
+	jge	L57
+L61:
+	movl	12(%ebp), %eax
+	cmpl	%eax, 16(%esi,%ebx,8)
+	ja	L57
+	incl	%ebx
+	cmpl	%edi, %ebx
+	jl	L61
+L57:
+	testl	%ebx, %ebx
+	jle	L62
+	movl	12(%esi,%ebx,8), %edx
+	movl	8(%esi,%ebx,8), %eax
+	addl	%edx, %eax
+	cmpl	12(%ebp), %eax
+	je	L85
+L62:
+	cmpl	%edi, %ebx
+	jge	L71
+	movl	12(%ebp), %eax
+	addl	16(%ebp), %eax
+	cmpl	16(%esi,%ebx,8), %eax
+	je	L86
+L71:
+	cmpl	$4089, %edi
+	jg	L73
+	movl	%edi, %ecx
+	cmpl	%ebx, %edi
+	jle	L83
+L78:
+	movl	8(%esi,%ecx,8), %eax
+	movl	12(%esi,%ecx,8), %edx
+	movl	%eax, 16(%esi,%ecx,8)
+	movl	%edx, 20(%esi,%ecx,8)
+	decl	%ecx
+	cmpl	%ebx, %ecx
+	jg	L78
+L83:
+	leal	1(%edi), %eax
+	movl	%eax, (%esi)
+	cmpl	%eax, 4(%esi)
+	jge	L79
+	movl	%eax, 4(%esi)
+L79:
+	movl	12(%ebp), %eax
+	movl	%eax, 16(%esi,%ebx,8)
+	movl	16(%ebp), %eax
+	movl	%eax, 20(%esi,%ebx,8)
+L84:
+	xorl	%eax, %eax
+L55:
+	popl	%ebx
+	popl	%esi
+	popl	%edi
+	popl	%ebp
+	ret
+L73:
+	movl	16(%ebp), %eax
+	incl	12(%esi)
+	addl	%eax, 8(%esi)
 	orl	$-1, %eax
-	jmp	L31
-L47:
-	movb	(%edx), %bl
-	andl	$255, %esi
-	movl	%ebx, %eax
-	movb	%cl, 2(%edx)
-	andl	$7, %eax
-	movl	%esi, 8(%edx)
-	movl	%eax, 12(%edx)
-	movb	%bl, %al
-	movzbl	1(%edx), %ecx
-	andl	$16, %eax
-	movl	%ecx, 4(%edx)
-	movb	$1, 3(%edx)
-	testb	%al, %al
-	je	L41
-	orl	$-256, %ecx
-	movl	%ecx, 4(%edx)
-L41:
-	andl	$32, %ebx
-	testb	%bl, %bl
-	je	L42
-	orl	$-256, 8(%edx)
-L42:
-	negl	8(%edx)
-	movl	$1, %eax
-	jmp	L31
-L46:
-	movb	%cl, 1(%edx)
-	movb	$3, 3(%edx)
-	jmp	L43
-L45:
-	andl	$-56, %esi
-	movl	%esi, %eax
-	cmpb	$8, %al
-	jne	L43
-	movb	%cl, (%edx)
-	movb	$2, 3(%edx)
-	jmp	L43
-	.def	_io_in8;	.scl	2;	.type	32;	.endef
+	jmp	L55
+L86:
+	movl	12(%ebp), %eax
+	movl	%eax, 16(%esi,%ebx,8)
+	movl	16(%ebp), %eax
+	addl	%eax, 20(%esi,%ebx,8)
+	jmp	L84
+L85:
+	addl	16(%ebp), %edx
+	movl	%edx, 12(%esi,%ebx,8)
+	cmpl	(%esi), %ebx
+	jge	L84
+	movl	12(%ebp), %eax
+	addl	16(%ebp), %eax
+	cmpl	16(%esi,%ebx,8), %eax
+	jne	L84
+	addl	20(%esi,%ebx,8), %edx
+	movl	%edx, 12(%esi,%ebx,8)
+	movl	(%esi), %eax
+	decl	%eax
+	movl	%eax, (%esi)
+	cmpl	%eax, %ebx
+	jge	L84
+	movl	%eax, %ecx
+L70:
+	movl	24(%esi,%ebx,8), %eax
+	movl	28(%esi,%ebx,8), %edx
+	movl	%eax, 16(%esi,%ebx,8)
+	movl	%edx, 20(%esi,%ebx,8)
+	incl	%ebx
+	cmpl	%ecx, %ebx
+	jl	L70
+	jmp	L84
+	.def	_memtest_sub;	.scl	2;	.type	32;	.endef
+	.def	_store_cr0;	.scl	2;	.type	32;	.endef
+	.def	_load_cr0;	.scl	2;	.type	32;	.endef
+	.def	_io_store_eflags;	.scl	2;	.type	32;	.endef
+	.def	_io_load_eflags;	.scl	2;	.type	32;	.endef
 	.def	_mouse_decode;	.scl	2;	.type	32;	.endef
 	.def	_boxfill8;	.scl	2;	.type	32;	.endef
 	.def	_fifo8_get;	.scl	2;	.type	32;	.endef
 	.def	_io_stihlt;	.scl	2;	.type	32;	.endef
 	.def	_fifo8_status;	.scl	2;	.type	32;	.endef
 	.def	_io_cli;	.scl	2;	.type	32;	.endef
-	.def	_enable_mouse;	.scl	2;	.type	32;	.endef
+	.def	_memman_total;	.scl	2;	.type	32;	.endef
 	.def	_putfonts8_asc;	.scl	2;	.type	32;	.endef
 	.def	_sprintf;	.scl	2;	.type	32;	.endef
 	.def	_putblock8_8;	.scl	2;	.type	32;	.endef
 	.def	_init_mouse_cursor8;	.scl	2;	.type	32;	.endef
 	.def	_init_screen8;	.scl	2;	.type	32;	.endef
 	.def	_init_palette;	.scl	2;	.type	32;	.endef
+	.def	_memman_free;	.scl	2;	.type	32;	.endef
+	.def	_memman_init;	.scl	2;	.type	32;	.endef
+	.def	_memtest;	.scl	2;	.type	32;	.endef
+	.def	_enable_mouse;	.scl	2;	.type	32;	.endef
 	.def	_init_keyboard;	.scl	2;	.type	32;	.endef
 	.def	_io_out8;	.scl	2;	.type	32;	.endef
 	.def	_fifo8_init;	.scl	2;	.type	32;	.endef

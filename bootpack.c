@@ -2,12 +2,37 @@
 
 #include "bootpack.h"
 
-extern struct FIFO8 keyfifo, mousefifo;
+#define EFLAGS_AC_BIT		0x00040000
+#define CR0_CACHE_DISABLE	0x60000000
+
+#define MEMMAN_FREES		4090
+#define MEMMAN_ADDR			0x003C0000
+
+// メモリの空き情報
+struct FREEINFO {
+	unsigned int addr, size;
+};
+
+// メモリ管理
+struct MEMMAN {
+	int frees, maxfrees, lostsize, losts;
+	struct FREEINFO free[MEMMAN_FREES];
+};
+
+unsigned int memtest(unsigned int start, unsigned int end);
+
+void memman_init(struct MEMMAN* man);
+unsigned int memman_total(struct MEMMAN* man);
+unsigned int memman_alloc(struct MEMMAN* man, unsigned int size);
+int memman_free(struct MEMMAN* man, unsigned int addr, unsigned int size);
+
 
 void HariMain() {
 	struct BOOTINFO* binfo = (struct BOOTINFO*) ADR_BOOTINFO;
 	char s[40], mcursor[256], keybuf[32], mousebuf[128];
 	int mx, my, i;
+	unsigned int memtotal;
+	struct MEMMAN* memman = (struct MEMMAN*)MEMMAN_ADDR;
 
 	init_gdtidt();
 	init_pic();
@@ -21,6 +46,15 @@ void HariMain() {
 	io_out8(PIC1_IMR, 0xEF);		// マウスを許可
 
 	init_keyboard();
+
+	struct MOUSE_DEC mdec;
+	enable_mouse(&mdec);
+
+	// メモリ解放
+	memtotal = memtest(0x00400000, 0xBFFFFFFF);
+	memman_init(memman);
+	memman_free(memman, 0x00001000, 0x0009E000);
+	memman_free(memman, 0x00400000, memtotal - 0x00400000);
 
 	init_palette();
 	init_screen8(binfo->vram, binfo->scrnx, binfo->scrny);
@@ -36,8 +70,8 @@ void HariMain() {
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_WHITE, s);
 
-	struct MOUSE_DEC mdec;
-	enable_mouse(&mdec);
+	sprintf(s, "memory %dMB free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 32, COL8_WHITE, s);
 
 	while (1) {
 		io_cli();
@@ -100,74 +134,151 @@ void HariMain() {
 	}
 }
 
-// キーボードコントローラーがデータ送信可能になるまで待つ
-void wait_KBC_sendready() {
-	while (1) {
-		if ((io_in8(PORT_KETSTA) & KEYSTA_SEND_NOTREADY) == 0) {
+unsigned int memtest(unsigned int start, unsigned int end) {
+	char flg486 = 0;
+	unsigned int eflg, cr0, i;
+
+	// 386か486以降か確認
+	eflg = io_load_eflags();
+	eflg |= EFLAGS_AC_BIT;
+	io_store_eflags(eflg);
+	
+	if ((eflg & EFLAGS_AC_BIT) != 0) {
+		flg486 = 1;
+	}
+
+	eflg &= ~EFLAGS_AC_BIT;
+	io_store_eflags(eflg);
+
+	if (flg486 != 0) {
+		cr0 = load_cr0();
+		cr0 |= CR0_CACHE_DISABLE;
+		store_cr0(cr0);
+	}
+
+	i = memtest_sub(start, end);
+
+	if (flg486 != 0) {
+		cr0 = load_cr0();
+		cr0 &= ~CR0_CACHE_DISABLE;
+		store_cr0(cr0);
+	}
+
+	return i;
+}
+
+// メモリ管理
+void memman_init(struct MEMMAN* man) {
+	man->frees = 0;
+	man->maxfrees = 0;
+	man->lostsize = 0;
+	man->losts = 0;
+
+	return;
+}
+
+// 空きサイズの合計を報告する
+unsigned int memman_total(struct MEMMAN* man) {
+	unsigned int i, t = 0;
+	for (i = 0; i < man->frees; i++) {
+		t += man->free[i].size;
+	}
+
+	return t;
+}
+
+// メモリ確保
+unsigned int memman_alloc(struct MEMMAN* man, unsigned int size) {
+	unsigned int i, a;
+
+	for (i = 0; i < man->frees; i++) {
+		if (man->free[i].size >= size) {
+			a = man->free[i].addr;
+			man->free[i].addr += size;
+			man->free[i].size -= size;
+
+			if (man->free[i].size == 0) {
+				man->frees--;
+
+				for (; i < man->frees; i++) {
+					man->free[i] = man->free[i + 1];
+				}
+			}
+			return a;
+		}
+	}
+
+	return 0;
+}
+
+// メモリ解放
+int memman_free(struct MEMMAN* man, unsigned int addr, unsigned int size) {
+	int i, j;
+
+	// free[]をどこに入れるか
+	for (i = 0; i < man->frees; i++) {
+		if (man->free[i].addr > addr) {
 			break;
 		}
 	}
 
-	return;
-}
+	if (i > 0) {
+		// 前がある場合
+		if (man->free[i - 1].addr + man->free[i - 1].size == addr) {
+			// 前の空き容量にまとめられる
+			man->free[i - 1].size += size;
+			
+			if (i < man->frees) {
+				// 後ろもある場合
+				if (addr + size == man->free[i].addr) {
+					// 後ろもまとめられる
+					man->free[i - 1].size += man->free[i].size;
+					
+					man->frees--;
 
-// キーボードコントローラーの初期化
-void init_keyboard() {
-	wait_KBC_sendready();
-	io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
-	wait_KBC_sendready();
-	io_out8(PORT_KEYDAT, KBC_MODE);
+					for (; i < man->frees; i++) {
+						man->free[i] = man->free[i + 1];
+					}
+				}
+			}
 
-	return;
-}
-
-// マウス有効化
-void enable_mouse(struct MOUSE_DEC* mdec) {
-	wait_KBC_sendready();
-	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
-	wait_KBC_sendready();
-	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-
-	mdec->phrase = 0;
-	return;
-}
-
-int mouse_decode(struct MOUSE_DEC* mdec, unsigned char dat) {
-	if (mdec->phrase == 0) {
-		if (dat == 0xFA) {
-			mdec->phrase = 1;
+			return 0;	// 成功
 		}
-		return 0;
-	}
-	else if (mdec->phrase == 1) {
-		if ((dat & 0xC8) == 0x08) {
-			mdec->buf[0] = dat;
-			mdec->phrase = 2;
-		}
-		return 0;
-	}
-	else if (mdec->phrase == 2) {
-		mdec->buf[1] = dat;
-		mdec->phrase = 3;
-		return 0;
-	}
-	else if (mdec->phrase == 3) {
-		mdec->buf[2] = dat;
-		mdec->phrase = 1;
-		mdec->btn = mdec->buf[0] & 0x07;
-		mdec->x = mdec->buf[1];
-		mdec->y = mdec->buf[2];
-
-		if ((mdec->buf[0] & 0x10) != 0) {
-			mdec->x |= 0xFFFFFF00;
-		}
-		if ((mdec->buf[0] & 0x20) != 0) {
-			mdec->y |= 0xFFFFFF00;
-		}
-		mdec->y = -mdec->y;
-
-		return 1;
 	}
 
-	return -1;
+	// 前とはまとめられなかった場合
+	if (i < man->frees) {
+		// 後ろがある場合
+		if (addr + size == man->free[i].addr) {
+			// 後ろとはまとめられる
+			man->free[i].addr = addr;
+			man->free[i].size += size;
+			
+			return 0;	// 成功
+		}
+	}
+
+	// 前にも後ろにもまとめられない場合
+	if (man->frees < MEMMAN_FREES) {
+		for (j = man->frees; j > i; j--) {
+			man->free[j] = man->free[j - 1];
+		}
+
+		man->frees++;
+
+		if (man->maxfrees < man->frees) {
+			man->maxfrees = man->frees;
+		}
+
+		man->free[i].addr = addr;
+		man->free[i].size = size;
+		
+		return 0;		// 成功
+	}
+
+	// 後ろにずらせなかった
+	man->losts++;
+	man->lostsize += size;
+
+	return -1;			// 失敗
 }

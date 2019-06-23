@@ -1,26 +1,5 @@
 #include <stdio.h>
 
-// bootpack.c
-struct MOUSE_DEC {
-	unsigned char buf[3], phrase;
-	int x, y, btn;
-};
-
-#define PORT_KEYDAT				0x0060
-#define PORT_KETSTA				0x0064
-#define PORT_KEYCMD				0x0064
-#define KEYSTA_SEND_NOTREADY	0x02
-#define KEYCMD_WRITE_MODE		0x60
-#define KBC_MODE				0x47
-#define KEYCMD_SENDTO_MOUSE		0xD4
-#define MOUSECMD_ENABLE			0xF4
-
-void wait_KBC_sendready();
-void init_keyboard();
-void enable_mouse();
-void enable_mouse(struct MOUSE_DEC* mdec);
-int mouse_decode(struct MOUSE_DEC* mdec, unsigned char dat);
-
 // asmhead.nas
 struct BOOTINFO {
 	char cyls, leds, vmode, reserve;
@@ -42,6 +21,12 @@ void load_gdtr(int limit, int addr);
 void load_idtr(int limit, int addr);
 void asm_inthandler21();
 void asm_inthandler2c();
+int load_cr0();
+void store_cr0(int cr0);
+unsigned int memtest_sub(unsigned int start, unsigned int end);
+
+// bootpack.c
+unsigned int memtest(unsigned int start, unsigned int end);
 
 // graphic.c
 void init_screen8(char* vram, int xsize, int ysize);
@@ -99,8 +84,6 @@ void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 
 // int.c
 void init_pic();
-void inthandler21(int* esp);
-void inthandler2c(int* esp);
 
 #define PIC0_ICW1	0x0020
 #define PIC0_OCW2	0x0020
@@ -125,3 +108,25 @@ void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
 int fifo8_put(struct FIFO8* fifo, unsigned char data);
 int fifo8_get(struct FIFO8* fifo);
 int fifo8_status(struct FIFO8* fifo);
+
+// keyboard.c
+#define PORT_KEYDAT				0x0060
+#define PORT_KEYCMD				0x0064
+
+extern struct FIFO8 keyfifo;
+
+void inthandler21(int* esp);
+void wait_KBC_sendready();
+void init_keyboard();
+
+// mouse.c
+struct MOUSE_DEC {
+	unsigned char buf[3], phrase;
+	int x, y, btn;
+};
+
+extern struct FIFO8 mousefifo;
+
+void inthandler2c(int* esp);
+void enable_mouse(struct MOUSE_DEC* mdec);
+int mouse_decode(struct MOUSE_DEC* mdec, unsigned char dat);

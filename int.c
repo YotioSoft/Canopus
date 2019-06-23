@@ -2,8 +2,6 @@
 
 #include "bootpack.h"
 
-struct FIFO8 keyfifo, mousefifo;
-
 // PICの初期化
 void init_pic() {
 	io_out8(PIC0_IMR, 0xFF);		// すべての割り込みを受け付けない
@@ -21,27 +19,6 @@ void init_pic() {
 
 	io_out8(PIC0_IMR, 0xFB);		// 11111011 PIC1以外はすべて禁止
 	io_out8(PIC1_IMR, 0xFF);		// 11111111 すべての割り込みを受け付けない
-
-	return;
-}
-
-// PS/2キーからの割り込み
-void inthandler21(int* esp) {
-	unsigned char data;
-	io_out8(PIC0_OCW2, 0x61);
-	data = io_in8(PORT_KEYDAT);
-	fifo8_put(&keyfifo, data);
-
-	return;
-}
-
-// PS/2マウスからの割り込み
-void inthandler2c(int* esp) {
-	unsigned char data;
-	io_out8(PIC1_OCW2, 0x64);
-	io_out8(PIC0_OCW2, 0x62);
-	data = io_in8(PORT_KEYDAT);
-	fifo8_put(&mousefifo, data);
 
 	return;
 }
