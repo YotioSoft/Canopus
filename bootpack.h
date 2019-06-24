@@ -55,6 +55,23 @@ void set_palette(int start, int end, unsigned char *rgb);
 #define	COL8_DARK_SKYBLUE	14
 #define	COL8_DARK_GRAY		15
 
+#define COL8_000000		0
+#define COL8_FF0000		1
+#define COL8_00FF00		2
+#define COL8_FFFF00		3
+#define COL8_0000FF		4
+#define COL8_FF00FF		5
+#define COL8_00FFFF		6
+#define COL8_FFFFFF		7
+#define COL8_C6C6C6		8
+#define COL8_840000		9
+#define COL8_008400		10
+#define COL8_848400		11
+#define COL8_000084		12
+#define COL8_840084		13
+#define COL8_008484		14
+#define COL8_848484		15
+
 // dsctbl.c
 struct SEGMENT_DESCRIPTOR {
 	short limit_low, base_low;
@@ -130,3 +147,51 @@ extern struct FIFO8 mousefifo;
 void inthandler2c(int* esp);
 void enable_mouse(struct MOUSE_DEC* mdec);
 int mouse_decode(struct MOUSE_DEC* mdec, unsigned char dat);
+
+// memory.c
+#define EFLAGS_AC_BIT		0x00040000
+#define CR0_CACHE_DISABLE	0x60000000
+
+#define MEMMAN_FREES		4090
+#define MEMMAN_ADDR			0x003C0000
+
+struct FREEINFO {	// ÉÅÉÇÉäÇÃãÛÇ´èÓïÒ
+	unsigned int addr, size;
+};
+
+struct MEMMAN {		// ÉÅÉÇÉää«óù
+	int frees, maxfrees, lostsize, losts;
+	struct FREEINFO free[MEMMAN_FREES];
+};
+
+unsigned int memtest(unsigned int start, unsigned int end);
+void memman_init(struct MEMMAN* man);
+unsigned int memman_total(struct MEMMAN* man);
+unsigned int memman_alloc(struct MEMMAN* man, unsigned int size);
+int memman_free(struct MEMMAN* man, unsigned int addr, unsigned int size);
+unsigned int memman_alloc_4k(struct MEMMAN* man, unsigned int size);
+int memman_free_4k(struct MEMMAN* man, unsigned int addr, unsigned int size);
+
+// sheet.c
+#define MAX_SHEETS		256
+#define SHEET_USE		1
+
+struct SHEET {
+	unsigned char* buf;
+	int bxsize, bysize, vx0, vy0, col_inv, height, flags;
+};
+
+struct SHTCTL {
+	unsigned char* vram;
+	int xsize, ysize, top;
+	struct SHEET* sheets[MAX_SHEETS];
+	struct SHEET sheets0[MAX_SHEETS];
+};
+
+struct SHTCTL* shtctl_init(struct MEMMAN* memman, unsigned char* vram, int xsize, int ysize);
+struct SHEET* sheet_alloc(struct SHTCTL* ctl);
+void sheet_setbuf(struct SHEET* sht, unsigned char* buf, int xsize, int ysize, int col_inv);
+void sheet_updown(struct SHTCTL* ctl, struct SHEET* sht, int height);
+void sheet_refresh(struct SHTCTL* ctl);
+void sheet_slide(struct SHTCTL* ctl, struct SHEET* sht, int vx0, int vy0);
+void sheet_free(struct SHTCTL* ctl, struct SHEET* sht);
